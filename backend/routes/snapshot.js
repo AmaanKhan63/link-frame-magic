@@ -1,7 +1,13 @@
 import express from 'express';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { chromium } from 'playwright';
+import { chromium as pwChromium } from 'playwright';
+import { addExtra } from 'playwright-extra';
+import StealthPlugin from 'playwright-extra-plugin-stealth';
+
+const chromium = addExtra(pwChromium);
+chromium.use(StealthPlugin());
+
 const router = express.Router();
 
 async function inlineResources($, baseUrl, headers = {}) {
@@ -87,7 +93,10 @@ router.get('/', async (req, res) => {
           'Sec-Fetch-Dest': 'document',
           'Sec-Fetch-Mode': 'navigate',
           'Sec-Fetch-Site': 'none',
-          'Cache-Control': 'max-age=0'
+          'Cache-Control': 'max-age=0',
+          'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120", "Not:A-Brand";v="99"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"'
         },
         timeout: 15000,
         maxRedirects: 5
@@ -112,10 +121,13 @@ router.get('/', async (req, res) => {
           userAgent: ua,
           locale: 'en-US',
           timezoneId: 'America/New_York',
-          extraHTTPHeaders: {
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-          }
+      extraHTTPHeaders: {
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120", "Not:A-Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"'
+      }
         });
         await context.addInitScript(() => {
           Object.defineProperty(navigator, 'webdriver', { get: () => false });
@@ -148,7 +160,10 @@ router.get('/', async (req, res) => {
     const resourceHeaders = {
       'User-Agent': ua,
       'Accept-Language': 'en-US,en;q=0.9',
-      'Referer': new URL(url).origin,
+      'Referer': url,
+      'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120", "Not:A-Brand";v="99"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Windows"',
       ...(cookieHeader ? { 'Cookie': cookieHeader } : {})
     };
 

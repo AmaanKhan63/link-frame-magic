@@ -1,10 +1,14 @@
 import express from 'express';
-import { chromium } from 'playwright';
 import fs from 'fs-extra';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
+import { chromium as pwChromium } from 'playwright';
+import { addExtra } from 'playwright-extra';
+import StealthPlugin from 'playwright-extra-plugin-stealth';
 
+const chromium = addExtra(pwChromium);
+chromium.use(StealthPlugin());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -20,8 +24,9 @@ router.get('/', async (req, res) => {
   let browser = null;
   
   try {
+    const headed = req.query.headed === '1';
     browser = await chromium.launch({ 
-      headless: true,
+      headless: !headed,
       args: [
         '--disable-blink-features=AutomationControlled',
         '--disable-dev-shm-usage',
@@ -40,7 +45,10 @@ router.get('/', async (req, res) => {
       permissions: ['geolocation'],
       extraHTTPHeaders: {
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120", "Not:A-Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"'
       }
     });
     
@@ -65,8 +73,14 @@ router.get('/', async (req, res) => {
       console.log('Network not idle, proceeding anyway');
     });
     
+    // If a bot challenge is detected, wait a bit longer
+    const bodyText = await page.textContent('body').catch(() => '');
+    if (bodyText && /verify|checking your browser|just a moment/i.test(bodyText)) {
+      await page.waitForTimeout(6000);
+    }
+    
     // Additional wait to ensure dynamic content loads
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2000);
     
     // Scroll to trigger lazy loading
     await page.evaluate(() => {
