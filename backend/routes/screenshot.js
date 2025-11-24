@@ -24,9 +24,21 @@ router.get("/", async (req, res) => {
   let browser = null;
 
   try {
+    const proxyHost = "brd.superproxy.io";
+    const proxyPort = 33335; // Note: Your curl command uses 33335, not 22225
+    const proxyUsername = "brd-customer-hl_60496ed9-zone-mobile_proxy1";
+    const proxyPassword = "lw73xac7wuk7";
+    // The final configuration object
+    const proxyConfig = {
+      server: `http://${proxyHost}:${proxyPort}`,
+      username: proxyUsername,
+      password: proxyPassword,
+    };
+
     const headed = req.query.headed === "1";
     browser = await chromium.launch({
       headless: !headed,
+      proxy: proxyConfig,
       args: [
         "--disable-blink-features=AutomationControlled",
         "--disable-dev-shm-usage",
@@ -56,6 +68,7 @@ router.get("/", async (req, res) => {
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Windows"',
       },
+      ignoreHTTPSErrors: true,
     });
 
     // Add stealth scripts
